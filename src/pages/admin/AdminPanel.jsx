@@ -319,6 +319,21 @@ const styles = `
 .toast-close:hover { color: #64748b; }
 @keyframes slideInUp { to { transform: translateY(0); opacity: 1; } }
 
+/* ─── MODAL ─── */
+.modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); z-index: 10000; display: flex; align-items: center; justify-content: center; padding: 20px; animation: fadeIn 0.2s; }
+.modal-content { background: white; border-radius: 20px; width: 100%; max-width: 500px; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.2); position: relative; animation: slideInUp 0.3s forwards; }
+.modal-close { position: absolute; top: 16px; right: 16px; background: #f1f5f9; border: none; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; color: #64748b; transition: all 0.2s; z-index: 10; }
+.modal-close:hover { background: #e2e8f0; color: #1e293b; }
+.modal-header { font-size: 1.2rem; font-weight: 800; font-family: 'Outfit'; color: #1e293b; padding: 20px 24px; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px; position: sticky; top: 0; background: white; z-index: 5; }
+.modal-body { padding: 24px; }
+.timeline-list { display: flex; flex-direction: column; gap: 16px; position: relative; padding-left: 20px; margin-top: 10px; margin-bottom: 24px; }
+.timeline-list::before { content: ''; position: absolute; left: 6px; top: 8px; bottom: 8px; width: 2px; background: #e2e8f0; }
+.timeline-item { position: relative; }
+.timeline-dot { position: absolute; left: -20px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: #0284c7; border: 2px solid white; box-shadow: 0 0 0 1px #0284c7; z-index: 2; }
+.timeline-title { font-size: 0.85rem; font-weight: 700; color: #1e293b; font-family: 'Outfit'; }
+.timeline-date { font-size: 0.72rem; color: #64748b; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
 .wa-btn { background: #25D366; color: white; border: none; border-radius: 6px; padding: 4px 8px; font-size: 0.75rem; cursor: pointer; display: inline-flex; align-items: center; gap: 4px; font-weight: 600; font-family: 'Outfit'; margin-left: 8px; transition: all 0.2s; }
 .wa-btn:hover { background: #1ebc5a; transform: translateY(-1px); }
 `;
@@ -337,8 +352,10 @@ export default function AdminPanel() {
     const [rYear, setRYear] = useState(2026); const [rPeriod, setRPeriod] = useState('tahun'); const [rSub, setRSub] = useState(null);
     const [sYear, setSYear] = useState(2026); const [sPeriod, setSPeriod] = useState('tahun'); const [sSub, setSSub] = useState(null);
     const [spjYear, setSpjYear] = useState(2026); const [spjPeriod, setSpjPeriod] = useState('tahun'); const [spjSub, setSpjSub] = useState(null);
-    const [spjClaimed, setSpjClaimed] = useState({});
+
     const [rSearch, setRSearch] = useState(''); const [sSearch, setSSearch] = useState('');
+    const [aSearch, setASearch] = useState('');
+    const [selectedArchive, setSelectedArchive] = useState(null);
 
     const ramahChartRef = useRef(null); const santunChartRef = useRef(null);
 
@@ -418,7 +435,18 @@ export default function AdminPanel() {
         } catch (e) { alert('Gagal: ' + e.message); }
     };
     const handleSignOut = async () => { await signOut(); navigate('/'); };
-    const toggleSpjClaimed = (id) => setSpjClaimed(p => ({ ...p, [id]: !p[id] }));
+    const toggleSpjClaimRamah = async (id, currentVal) => {
+        try {
+            const { error } = await supabase.from('ramah_documents').update({ is_spj_claimed: !currentVal }).eq('id', id);
+            if (!error) fetchData();
+        } catch (e) { }
+    };
+    const toggleSpjClaimSantun = async (id, currentVal) => {
+        try {
+            const { error } = await supabase.from('santun_requests').update({ is_spj_claimed: !currentVal }).eq('id', id);
+            if (!error) fetchData();
+        } catch (e) { }
+    };
 
     // Filtered data
     const ramahFiltered = useMemo(() => filterData(ramahDocs, rYear, rPeriod, rSub), [ramahDocs, rYear, rPeriod, rSub]);
@@ -437,6 +465,18 @@ export default function AdminPanel() {
         const q = sSearch.toLowerCase();
         return santunFiltered.filter(r => r.patient_name?.toLowerCase().includes(q) || r.patient_nik?.includes(q) || r.tracking_code?.toLowerCase().includes(q));
     }, [santunFiltered, sSearch]);
+
+    // Active
+    const ramahActive = ramahSearched.filter(d => d.status !== 'completed');
+    const santunActive = santunSearched.filter(r => r.status !== 'completed');
+
+    // Archive
+    const arsipRamah = completedRamah.filter(d =>
+        !aSearch.trim() || d.applicant_name?.toLowerCase().includes(aSearch.toLowerCase()) || d.applicant_nik?.includes(aSearch) || d.tracking_code?.toLowerCase().includes(aSearch.toLowerCase())
+    );
+    const arsipSantun = completedSantun.filter(r =>
+        !aSearch.trim() || r.patient_name?.toLowerCase().includes(aSearch.toLowerCase()) || r.patient_nik?.includes(aSearch) || r.tracking_code?.toLowerCase().includes(aSearch.toLowerCase())
+    );
 
     // Chart data
     const ramahChart = useMemo(() => getChartLabelsAndData(ramahFiltered, rPeriod, rSub, rYear), [ramahFiltered, rPeriod, rSub, rYear]);
@@ -475,6 +515,48 @@ export default function AdminPanel() {
     };
 
     const StatusBadge = ({ status }) => <span className={`badge badge-${status}`}>{status.replace('_', ' ')}</span>;
+
+    const renderSpjList = (title, items, toggleFn) => {
+        const unclaimed = items.filter(i => !i.is_spj_claimed);
+        const claimed = items.filter(i => i.is_spj_claimed);
+
+        return (
+            <div className="admin-card" style={{ padding: '24px' }}>
+                <div className="admin-card-title" style={{ fontSize: '1.1rem', marginBottom: '20px' }}>{title}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '20px' }}>
+                    {/* Belum Diklaim */}
+                    <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '14px', padding: '16px' }}>
+                        <h4 style={{ fontSize: '0.9rem', color: '#64748b', marginBottom: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'Outfit'" }}>
+                            <Square size={16} /> Belum Diklaim ({unclaimed.length})
+                        </h4>
+                        {unclaimed.length === 0 ? <p style={{ fontSize: '0.8rem', color: '#94a3b8', textAlign: 'center', padding: '12px' }}>Tidak ada data</p> :
+                            unclaimed.map(item => (
+                                <div key={item.id} className="spj-item" onClick={() => toggleFn(item.id, false)}>
+                                    <div className="spj-checkbox unchecked"><Square size={14} /></div>
+                                    <div style={{ flex: 1, minWidth: 0 }}><p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b', fontFamily: "'Outfit'" }}>{item.applicant_name || item.patient_name}</p><p style={{ fontSize: '0.72rem', color: '#64748b' }}>{item.tracking_code} · {new Date(item.created_at).toLocaleDateString('id-ID')}</p></div>
+                                </div>
+                            ))
+                        }
+                    </div>
+                    {/* Sukses Diklaim */}
+                    <div style={{ background: '#f0fdf4', border: '1px solid #86efac', borderRadius: '14px', padding: '16px' }}>
+                        <h4 style={{ fontSize: '0.9rem', color: '#16a34a', marginBottom: '12px', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px', fontFamily: "'Outfit'" }}>
+                            <CheckCircle size={16} /> Sukses Diklaim ({claimed.length})
+                        </h4>
+                        {claimed.length === 0 ? <p style={{ fontSize: '0.8rem', color: '#94a3b8', textAlign: 'center', padding: '12px' }}>Tidak ada data</p> :
+                            claimed.map(item => (
+                                <div key={item.id} className="spj-item claimed" onClick={() => toggleFn(item.id, true)}>
+                                    <div className="spj-checkbox checked"><CheckCircle size={14} /></div>
+                                    <div style={{ flex: 1, minWidth: 0 }}><p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b', fontFamily: "'Outfit'" }}>{item.applicant_name || item.patient_name}</p><p style={{ fontSize: '0.72rem', color: '#64748b' }}>{item.tracking_code} · {new Date(item.created_at).toLocaleDateString('id-ID')}</p></div>
+                                    <span style={{ fontSize: '0.68rem', background: '#dcfce7', color: '#16a34a', padding: '3px 8px', borderRadius: '10px', fontWeight: 700 }}>Diklaim</span>
+                                </div>
+                            ))
+                        }
+                    </div>
+                </div>
+            </div>
+        );
+    };
 
     const DocumentChecklist = ({ files, zipName }) => {
         if (!files || !files.length) return <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Tidak ada dokumen</p>;
@@ -570,6 +652,7 @@ export default function AdminPanel() {
     const tabs = [
         { key: 'ramah', label: 'RAMAH', icon: FileText },
         { key: 'santun', label: 'SANTUN', icon: Truck },
+        { key: 'arsip', label: 'ARSIP', icon: Archive },
         { key: 'spj', label: 'SPJ', icon: ClipboardList },
     ];
 
@@ -595,9 +678,14 @@ export default function AdminPanel() {
             <div className="page-content" style={{ padding: '16px 16px 32px' }}>
                 <div className="admin-tabs-modern">
                     {tabs.map(t => {
-                        const I = t.icon; return (
-                            <button key={t.key} className={`admin-tab-modern ${activeTab === t.key ? 'active' : ''}`} onClick={() => setActiveTab(t.key)}>
+                        const I = t.icon;
+                        let badgeCount = 0;
+                        if (t.key === 'ramah') badgeCount = ramahDocs.filter(d => d.status === 'pending').length;
+                        if (t.key === 'santun') badgeCount = santunReqs.filter(r => r.status === 'requested').length;
+                        return (
+                            <button key={t.key} className={`admin-tab-modern ${activeTab === t.key ? 'active' : ''}`} onClick={() => setActiveTab(t.key)} style={{ position: 'relative' }}>
                                 <I size={14} />{t.label}
+                                {badgeCount > 0 && <span style={{ position: 'absolute', top: '2px', right: '4px', background: '#ef4444', color: 'white', fontSize: '0.65rem', fontWeight: 800, padding: '1px 5px', borderRadius: '10px', boxShadow: '0 2px 4px rgba(239, 68, 68, 0.4)' }}>{badgeCount}</span>}
                             </button>
                         );
                     })}
@@ -622,10 +710,10 @@ export default function AdminPanel() {
                             <button className="btn-m btn-chart btn-sm" onClick={() => downloadChart(ramahChartRef, 'Grafik_RAMAH', `Grafik Dokumen RAMAH (${getPeriodText(rYear, rPeriod, rSub)})`)}>Unduh Grafik</button>
                         </div>
                         <div className="section-sep"></div>
-                        <h3 style={{ fontSize: '1rem', fontFamily: "'Outfit',sans-serif", fontWeight: 700, marginBottom: '12px' }}>Daftar Dokumen ({ramahSearched.length})</h3>
+                        <h3 style={{ fontSize: '1rem', fontFamily: "'Outfit',sans-serif", fontWeight: 700, marginBottom: '12px' }}>Daftar Dokumen Aktif ({ramahActive.length})</h3>
                         <div className="search-box"><Search size={16} color="#94a3b8" /><input placeholder="Cari nama pemohon atau NIK..." value={rSearch} onChange={e => setRSearch(e.target.value)} /></div>
-                        {ramahSearched.length === 0 ? <div className="empty-state"><FileText size={40} /><p>Belum ada dokumen</p></div> :
-                            ramahSearched.map(doc => (
+                        {ramahActive.length === 0 ? <div className="empty-state"><FileText size={40} /><p>Belum ada dokumen aktif</p></div> :
+                            ramahActive.map(doc => (
                                 <div key={doc.id} className="admin-card">
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                                         <div><p style={{ fontWeight: 700, fontSize: '0.95rem', fontFamily: "'Outfit'" }}>{doc.applicant_name}</p><p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>NIK: {doc.applicant_nik}</p></div>
@@ -670,10 +758,10 @@ export default function AdminPanel() {
                             <button className="btn-m btn-chart btn-sm" onClick={() => downloadChart(santunChartRef, 'Grafik_SANTUN', `Grafik Transport SANTUN (${getPeriodText(sYear, sPeriod, sSub)})`)}>Unduh Grafik</button>
                         </div>
                         <div className="section-sep"></div>
-                        <h3 style={{ fontSize: '1rem', fontFamily: "'Outfit',sans-serif", fontWeight: 700, marginBottom: '12px' }}>Daftar Permohonan ({santunSearched.length})</h3>
+                        <h3 style={{ fontSize: '1rem', fontFamily: "'Outfit',sans-serif", fontWeight: 700, marginBottom: '12px' }}>Daftar Permohonan Aktif ({santunActive.length})</h3>
                         <div className="search-box"><Search size={16} color="#94a3b8" /><input placeholder="Cari nama pasien atau NIK..." value={sSearch} onChange={e => setSSearch(e.target.value)} /></div>
-                        {santunSearched.length === 0 ? <div className="empty-state"><Truck size={40} /><p>Belum ada permohonan</p></div> :
-                            santunSearched.map(req => (
+                        {santunActive.length === 0 ? <div className="empty-state"><Truck size={40} /><p>Belum ada permohonan aktif</p></div> :
+                            santunActive.map(req => (
                                 <div key={req.id} className="admin-card">
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
                                         <div><p style={{ fontWeight: 700, fontSize: '0.95rem', fontFamily: "'Outfit'" }}>{req.patient_name}</p><p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>NIK: {req.patient_nik}</p></div>
@@ -704,38 +792,54 @@ export default function AdminPanel() {
                         }
                     </div>)}
 
+                    {/* ═══════ ARSIP ═══════ */}
+                    {activeTab === 'arsip' && (<div>
+                        <div className="sc-grid">
+                            <div className="sc-card sc-blue"><div className="sc-emoji">📚</div><div className="sc-val">{arsipRamah.length + arsipSantun.length}</div><div className="sc-lbl">Total Arsip Selesai</div></div>
+                            <div className="sc-card sc-green"><div className="sc-emoji">📄</div><div className="sc-val">{arsipRamah.length}</div><div className="sc-lbl">Arsip RAMAH</div></div>
+                            <div className="sc-card sc-amber"><div className="sc-emoji">🚑</div><div className="sc-val">{arsipSantun.length}</div><div className="sc-lbl">Arsip SANTUN</div></div>
+                            <div className="sc-card sc-rose"><div className="sc-emoji">🔍</div><div className="sc-val">#</div><div className="sc-lbl">Gunakan Pencarian</div></div>
+                        </div>
+                        <div className="search-box" style={{ marginBottom: '20px' }}><Search size={16} color="#94a3b8" /><input placeholder="Cari arsip nama atau NIK..." value={aSearch} onChange={e => setASearch(e.target.value)} /></div>
+
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '16px' }}>
+                            <div className="admin-card">
+                                <div className="admin-card-title">Arsip RAMAH ({arsipRamah.length})</div>
+                                {arsipRamah.length === 0 ? <p style={{ fontSize: '0.82rem', color: '#94a3b8', textAlign: 'center', padding: '12px' }}>Tidak ada arsip ditemukan</p> :
+                                    arsipRamah.map(doc => (
+                                        <div key={doc.id} className="spj-item" style={{ cursor: 'pointer' }} onClick={() => setSelectedArchive({ type: 'ramah', data: doc })}>
+                                            <div style={{ flex: 1, minWidth: 0 }}><p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b', fontFamily: "'Outfit'" }}>{doc.applicant_name}</p><p style={{ fontSize: '0.72rem', color: '#64748b' }}>{doc.tracking_code} · {new Date(doc.created_at).toLocaleDateString('id-ID')}</p></div>
+                                            <span style={{ fontSize: '0.68rem', background: '#dcfce7', color: '#16a34a', padding: '3px 8px', borderRadius: '10px', fontWeight: 700 }}>Selesai</span>
+                                        </div>
+                                    ))
+                                }
+                            </div>
+                            <div className="admin-card">
+                                <div className="admin-card-title">Arsip SANTUN ({arsipSantun.length})</div>
+                                {arsipSantun.length === 0 ? <p style={{ fontSize: '0.82rem', color: '#94a3b8', textAlign: 'center', padding: '12px' }}>Tidak ada arsip ditemukan</p> :
+                                    arsipSantun.map(req => (
+                                        <div key={req.id} className="spj-item" style={{ cursor: 'pointer' }} onClick={() => setSelectedArchive({ type: 'santun', data: req })}>
+                                            <div style={{ flex: 1, minWidth: 0 }}><p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b', fontFamily: "'Outfit'" }}>{req.patient_name}</p><p style={{ fontSize: '0.72rem', color: '#64748b' }}>{req.tracking_code} · {new Date(req.created_at).toLocaleDateString('id-ID')}</p></div>
+                                            <span style={{ fontSize: '0.68rem', background: '#dcfce7', color: '#16a34a', padding: '3px 8px', borderRadius: '10px', fontWeight: 700 }}>Selesai</span>
+                                        </div>
+                                    ))
+                                }
+                            </div>
+                        </div>
+                    </div>)}
+
                     {/* ═══════ SPJ ═══════ */}
                     {activeTab === 'spj' && (<div>
                         <div className="sc-grid">
                             <div className="sc-card sc-blue"><div className="sc-emoji">📄</div><div className="sc-val">{completedRamah.length}</div><div className="sc-lbl">RAMAH Selesai</div></div>
                             <div className="sc-card sc-green"><div className="sc-emoji">🚑</div><div className="sc-val">{completedSantun.length}</div><div className="sc-lbl">SANTUN Selesai</div></div>
-                            <div className="sc-card sc-amber"><div className="sc-emoji">✍️</div><div className="sc-val">{Object.values(spjClaimed).filter(Boolean).length}</div><div className="sc-lbl">Diklaim</div></div>
-                            <div className="sc-card sc-rose"><div className="sc-emoji">📝</div><div className="sc-val">{(completedRamah.length + completedSantun.length) - Object.values(spjClaimed).filter(Boolean).length}</div><div className="sc-lbl">Belum Diklaim</div></div>
+                            <div className="sc-card sc-amber"><div className="sc-emoji">✍️</div><div className="sc-val">{completedRamah.filter(d => d.is_spj_claimed).length + completedSantun.filter(r => r.is_spj_claimed).length}</div><div className="sc-lbl">Total Diklaim</div></div>
+                            <div className="sc-card sc-rose"><div className="sc-emoji">📝</div><div className="sc-val">{completedRamah.filter(d => !d.is_spj_claimed).length + completedSantun.filter(r => !r.is_spj_claimed).length}</div><div className="sc-lbl">Sisa Belum Diklaim</div></div>
                         </div>
                         <FilterBar year={spjYear} setYear={setSpjYear} period={spjPeriod} setPeriod={setSpjPeriod} sub={spjSub} setSub={setSpjSub} />
 
-                        <div className="admin-card"><div className="admin-card-title">SPJ RAMAH ({completedRamah.length})</div>
-                            {completedRamah.length === 0 ? <p style={{ fontSize: '0.82rem', color: '#94a3b8', textAlign: 'center', padding: '20px 0' }}>Belum ada data selesai</p> :
-                                completedRamah.map(doc => (
-                                    <div key={doc.id} className={`spj-item ${spjClaimed[doc.id] ? 'claimed' : ''}`} onClick={() => toggleSpjClaimed(doc.id)}>
-                                        <div className={`spj-checkbox ${spjClaimed[doc.id] ? 'checked' : 'unchecked'}`}>{spjClaimed[doc.id] ? <CheckCircle size={14} /> : <Square size={14} />}</div>
-                                        <div style={{ flex: 1, minWidth: 0 }}><p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b', fontFamily: "'Outfit'" }}>{doc.applicant_name}</p><p style={{ fontSize: '0.72rem', color: '#64748b' }}>{doc.tracking_code} · {new Date(doc.created_at).toLocaleDateString('id-ID')}</p></div>
-                                        {spjClaimed[doc.id] && <span style={{ fontSize: '0.68rem', background: '#dcfce7', color: '#16a34a', padding: '3px 8px', borderRadius: '10px', fontWeight: 700 }}>Diklaim</span>}
-                                    </div>
-                                ))
-                            }
-                        </div>
-                        <div className="admin-card"><div className="admin-card-title">SPJ SANTUN ({completedSantun.length})</div>
-                            {completedSantun.length === 0 ? <p style={{ fontSize: '0.82rem', color: '#94a3b8', textAlign: 'center', padding: '20px 0' }}>Belum ada data selesai</p> :
-                                completedSantun.map(req => (
-                                    <div key={req.id} className={`spj-item ${spjClaimed[req.id] ? 'claimed' : ''}`} onClick={() => toggleSpjClaimed(req.id)}>
-                                        <div className={`spj-checkbox ${spjClaimed[req.id] ? 'checked' : 'unchecked'}`}>{spjClaimed[req.id] ? <CheckCircle size={14} /> : <Square size={14} />}</div>
-                                        <div style={{ flex: 1, minWidth: 0 }}><p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b', fontFamily: "'Outfit'" }}>{req.patient_name}</p><p style={{ fontSize: '0.72rem', color: '#64748b' }}>{req.tracking_code} · {new Date(req.created_at).toLocaleDateString('id-ID')}</p></div>
-                                        {spjClaimed[req.id] && <span style={{ fontSize: '0.68rem', background: '#dcfce7', color: '#16a34a', padding: '3px 8px', borderRadius: '10px', fontWeight: 700 }}>Diklaim</span>}
-                                    </div>
-                                ))
-                            }
-                        </div>
+                        {renderSpjList(`SPJ RAMAH (${completedRamah.length})`, completedRamah, toggleSpjClaimRamah)}
+                        {renderSpjList(`SPJ SANTUN (${completedSantun.length})`, completedSantun, toggleSpjClaimSantun)}
                         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: '16px', marginTop: '24px' }}>
                             <div className="spj-dl-frame">
                                 <div className="spj-dl-header">
@@ -743,8 +847,8 @@ export default function AdminPanel() {
                                     SPJ RAMAH
                                 </div>
                                 <div className="dl-wrap">
-                                    <button className="btn-m btn-excel btn-sm" onClick={() => generateExcel(completedRamah.map(d => ({ ...d, is_claimed: spjClaimed[d.id] ? 'Ya' : 'Belum' })), 'REKAPITULASI SPJ RAMAH', 'SPJ RAMAH', getPeriodText(spjYear, spjPeriod, spjSub), ['Nama', 'NIK', 'HP', 'Alamat', 'Tracking', 'Tanggal', 'Diklaim'], ['applicant_name', 'applicant_nik', 'phone_number', 'address', 'tracking_code', 'created_at', 'is_claimed'])}>Unduh Excel</button>
-                                    <button className="btn-m btn-pdf btn-sm" onClick={() => generatePDF(completedRamah.map(d => ({ ...d, is_claimed: spjClaimed[d.id] ? 'Ya' : 'Belum' })), 'REKAPITULASI SPJ RAMAH', getPeriodText(spjYear, spjPeriod, spjSub), ['Nama', 'NIK', 'HP', 'Alamat', 'Tracking', 'Tanggal', 'Diklaim'], ['applicant_name', 'applicant_nik', 'phone_number', 'address', 'tracking_code', 'created_at', 'is_claimed'])}>Unduh PDF</button>
+                                    <button className="btn-m btn-excel btn-sm" onClick={() => generateExcel(completedRamah.map(d => ({ ...d, is_claimed: d.is_spj_claimed ? 'Ya' : 'Belum' })), 'REKAPITULASI SPJ RAMAH', 'SPJ RAMAH', getPeriodText(spjYear, spjPeriod, spjSub), ['Nama', 'NIK', 'HP', 'Alamat', 'Tracking', 'Tanggal', 'Diklaim'], ['applicant_name', 'applicant_nik', 'phone_number', 'address', 'tracking_code', 'created_at', 'is_claimed'])}>Unduh Excel</button>
+                                    <button className="btn-m btn-pdf btn-sm" onClick={() => generatePDF(completedRamah.map(d => ({ ...d, is_claimed: d.is_spj_claimed ? 'Ya' : 'Belum' })), 'REKAPITULASI SPJ RAMAH', getPeriodText(spjYear, spjPeriod, spjSub), ['Nama', 'NIK', 'HP', 'Alamat', 'Tracking', 'Tanggal', 'Diklaim'], ['applicant_name', 'applicant_nik', 'phone_number', 'address', 'tracking_code', 'created_at', 'is_claimed'])}>Unduh PDF</button>
                                 </div>
                             </div>
                             <div className="spj-dl-frame">
@@ -753,8 +857,8 @@ export default function AdminPanel() {
                                     SPJ SANTUN
                                 </div>
                                 <div className="dl-wrap">
-                                    <button className="btn-m btn-excel btn-sm" onClick={() => generateExcel(completedSantun.map(r => ({ ...r, is_claimed: spjClaimed[r.id] ? 'Ya' : 'Belum' })), 'REKAPITULASI SPJ SANTUN', 'SPJ SANTUN', getPeriodText(spjYear, spjPeriod, spjSub), ['Nama', 'NIK', 'HP', 'Jemput', 'Tujuan', 'Tracking', 'Tanggal', 'Diklaim'], ['patient_name', 'patient_nik', 'phone_number', 'pickup_address', 'dropoff_address', 'tracking_code', 'created_at', 'is_claimed'])}>Unduh Excel</button>
-                                    <button className="btn-m btn-pdf btn-sm" onClick={() => generatePDF(completedSantun.map(r => ({ ...r, is_claimed: spjClaimed[r.id] ? 'Ya' : 'Belum' })), 'REKAPITULASI SPJ SANTUN', getPeriodText(spjYear, spjPeriod, spjSub), ['Nama', 'NIK', 'HP', 'Jemput', 'Tujuan', 'Tracking', 'Tanggal', 'Diklaim'], ['patient_name', 'patient_nik', 'phone_number', 'pickup_address', 'dropoff_address', 'tracking_code', 'created_at', 'is_claimed'])}>Unduh PDF</button>
+                                    <button className="btn-m btn-excel btn-sm" onClick={() => generateExcel(completedSantun.map(r => ({ ...r, is_claimed: r.is_spj_claimed ? 'Ya' : 'Belum' })), 'REKAPITULASI SPJ SANTUN', 'SPJ SANTUN', getPeriodText(spjYear, spjPeriod, spjSub), ['Nama', 'NIK', 'HP', 'Jemput', 'Tujuan', 'Tracking', 'Tanggal', 'Diklaim'], ['patient_name', 'patient_nik', 'phone_number', 'pickup_address', 'dropoff_address', 'tracking_code', 'created_at', 'is_claimed'])}>Unduh Excel</button>
+                                    <button className="btn-m btn-pdf btn-sm" onClick={() => generatePDF(completedSantun.map(r => ({ ...r, is_claimed: r.is_spj_claimed ? 'Ya' : 'Belum' })), 'REKAPITULASI SPJ SANTUN', getPeriodText(spjYear, spjPeriod, spjSub), ['Nama', 'NIK', 'HP', 'Jemput', 'Tujuan', 'Tracking', 'Tanggal', 'Diklaim'], ['patient_name', 'patient_nik', 'phone_number', 'pickup_address', 'dropoff_address', 'tracking_code', 'created_at', 'is_claimed'])}>Unduh PDF</button>
                                 </div>
                             </div>
                         </div>
@@ -779,6 +883,60 @@ export default function AdminPanel() {
                     </div>
                 ))}
             </div>
+
+            {/* ── ARCHIVE MODAL ── */}
+            {selectedArchive && (
+                <div className="modal-overlay" onClick={() => setSelectedArchive(null)}>
+                    <div className="modal-content" onClick={e => e.stopPropagation()}>
+                        <button className="modal-close" onClick={() => setSelectedArchive(null)}><X size={18} /></button>
+                        <div className="modal-header">
+                            {selectedArchive.type === 'ramah' ? <FileText size={20} color="#2563eb" /> : <Truck size={20} color="#16a34a" />}
+                            Detail Arsip {selectedArchive.type === 'ramah' ? 'RAMAH' : 'SANTUN'}
+                        </div>
+                        <div className="modal-body">
+                            <div style={{ marginBottom: '20px' }}>
+                                <h4 style={{ fontSize: '0.95rem', fontWeight: 700, fontFamily: "'Outfit'", marginBottom: '8px' }}>
+                                    {selectedArchive.type === 'ramah' ? selectedArchive.data.applicant_name : selectedArchive.data.patient_name}
+                                </h4>
+                                <p style={{ fontSize: '0.8rem', color: '#64748b' }}>NIK: {selectedArchive.type === 'ramah' ? selectedArchive.data.applicant_nik : selectedArchive.data.patient_nik}</p>
+                                <p style={{ fontSize: '0.8rem', color: '#64748b' }}>No HP: {selectedArchive.data.phone_number || '-'}</p>
+                                {selectedArchive.type === 'ramah' ? (
+                                    <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>📍 Alamat: {selectedArchive.data.address}</p>
+                                ) : (
+                                    <>
+                                        <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>📍 Jemput: {selectedArchive.data.pickup_address}</p>
+                                        <p style={{ fontSize: '0.8rem', color: '#64748b' }}>🏠 Tujuan: {selectedArchive.data.dropoff_address}</p>
+                                    </>
+                                )}
+                            </div>
+
+                            <p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b', marginBottom: '8px', fontFamily: "'Outfit'" }}>Kronologi Status</p>
+                            <div className="timeline-list">
+                                <div className="timeline-item">
+                                    <div className="timeline-dot" style={{ background: '#16a34a', boxShadow: '0 0 0 1px #16a34a' }}></div>
+                                    <div className="timeline-title">Layanan Selesai</div>
+                                    <div className="timeline-date">Status saat ini</div>
+                                </div>
+                                <div className="timeline-item">
+                                    <div className="timeline-dot"></div>
+                                    <div className="timeline-title">Pengajuan Diterima</div>
+                                    <div className="timeline-date">{new Date(selectedArchive.data.created_at).toLocaleString('id-ID')}</div>
+                                </div>
+                            </div>
+
+                            <p style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b', marginBottom: '8px', fontFamily: "'Outfit'" }}>Dokumen Upload</p>
+                            {selectedArchive.data.document_files?.length > 0 ? (
+                                <DocumentChecklist
+                                    files={selectedArchive.data.document_files}
+                                    zipName={`Arsip_${selectedArchive.type.toUpperCase()}_${selectedArchive.data.tracking_code}`}
+                                />
+                            ) : (
+                                <p style={{ fontSize: '0.8rem', color: '#94a3b8' }}>Tidak ada dokumen terlampir.</p>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

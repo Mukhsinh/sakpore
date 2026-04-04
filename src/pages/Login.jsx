@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/useAuthStore';
-import { Hospital, Lock, Mail, ArrowLeft } from 'lucide-react';
+import { Hospital, Lock, Mail, Home } from 'lucide-react';
 
 export default function Login() {
     const [email, setEmail] = useState('');
@@ -106,9 +106,23 @@ export default function Login() {
             <button
                 onClick={() => navigate('/')}
                 className="back-btn"
-                style={{ margin: '20px auto 0', display: 'flex' }}
+                style={{
+                    margin: '24px auto 0',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    width: '52px',
+                    height: '52px',
+                    borderRadius: '50%',
+                    background: 'white',
+                    border: '1px solid #e5e7eb',
+                    color: 'var(--primary)',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                    padding: 0
+                }}
+                title="Beranda"
             >
-                <ArrowLeft size={16} /> Kembali ke Beranda
+                <Home size={22} />
             </button>
         </div>
     );

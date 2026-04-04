@@ -1,32 +1,59 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Clock, Phone, Shield, Star, MessageSquare, Send } from 'lucide-react';
-
-const mockTestimonials = [
-    { id: 1, name: 'Budi Santoso', text: 'Layanan SANTUN sangat membantu istri saya setelah melahirkan. Sopir ramah dan tepat waktu.', rating: 5 },
-    { id: 2, name: 'Siti Aminah', text: 'RAMAH membuat urusan akta anak saya jadi sangat mudah tanpa perlu antri panjang.', rating: 5 },
-    { id: 3, name: 'Andi Wijaya', text: 'Aplikasi yang sangat inovatif! Terima kasih RSUD Bendan.', rating: 5 },
-    { id: 4, name: 'Dewi Lestari', text: 'Sangat responsif dan layanannya memuaskan.', rating: 5 },
-];
+import { supabase } from '../lib/supabase';
 
 function TestimonialSection() {
+    const [testimonials, setTestimonials] = useState([]);
     const [name, setName] = useState('');
     const [review, setReview] = useState('');
     const [rating, setRating] = useState(5);
     const [submitted, setSubmitted] = useState(false);
+    const [loading, setLoading] = useState(false);
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        if (name && review) {
-            setSubmitted(true);
-            setTimeout(() => {
-                setSubmitted(false);
-                setName('');
-                setReview('');
-                setRating(5);
-            }, 3000);
+    useEffect(() => {
+        fetchTestimonials();
+    }, []);
+
+    const fetchTestimonials = async () => {
+        const { data, error } = await supabase
+            .from('testimonials')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (!error && data) {
+            setTestimonials(data);
         }
     };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        if (name && review) {
+            setLoading(true);
+            const { error } = await supabase
+                .from('testimonials')
+                .insert([{ name, text: review, rating }]);
+
+            if (!error) {
+                setSubmitted(true);
+                fetchTestimonials();
+                setTimeout(() => {
+                    setSubmitted(false);
+                    setName('');
+                    setReview('');
+                    setRating(5);
+                }, 3000);
+            } else {
+                alert('Gagal mengirim testimoni');
+            }
+            setLoading(false);
+        }
+    };
+
+    const displayTestimonials = testimonials.length > 0 ? testimonials : [
+        { id: 1, name: 'Budi Santoso', text: 'Layanan SANTUN sangat membantu istri saya setelah melahirkan. Sopir ramah dan tepat waktu.', rating: 5 },
+        { id: 2, name: 'Siti Aminah', text: 'RAMAH membuat urusan akta anak saya jadi sangat mudah tanpa perlu antri panjang.', rating: 5 }
+    ];
 
     return (
         <div className="testimonial-container" style={{ marginTop: '32px' }}>
@@ -37,7 +64,7 @@ function TestimonialSection() {
             {/* Testimonials Marquee */}
             <div className="marquee-wrapper">
                 <div className="marquee-content">
-                    {[...mockTestimonials, ...mockTestimonials].map((t, idx) => (
+                    {[...displayTestimonials, ...displayTestimonials].map((t, idx) => (
                         <div key={idx} className="testimonial-card">
                             <div className="stars">
                                 {[...Array(5)].map((_, i) => (
@@ -86,6 +113,7 @@ function TestimonialSection() {
                             value={name}
                             onChange={(e) => setName(e.target.value)}
                             required
+                            disabled={loading}
                             style={{ background: 'rgba(255,255,255,0.8)' }}
                         />
                         <textarea
@@ -95,10 +123,11 @@ function TestimonialSection() {
                             value={review}
                             onChange={(e) => setReview(e.target.value)}
                             required
+                            disabled={loading}
                             style={{ resize: 'none', background: 'rgba(255,255,255,0.8)' }}
                         />
-                        <button type="submit" className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: 'linear-gradient(135deg, #F59E0B, #D97706)', border: 'none' }}>
-                            <Send size={16} /> Kirim Testimoni
+                        <button type="submit" disabled={loading} className="btn btn-primary" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', background: 'linear-gradient(135deg, #F59E0B, #D97706)', border: 'none' }}>
+                            <Send size={16} /> {loading ? 'Mengirim...' : 'Kirim Testimoni'}
                         </button>
                     </form>
                 )}
@@ -129,7 +158,9 @@ export default function HomePage() {
                         </div>
                         <div className="card-body">
                             <h3>RAMAH</h3>
-                            <p>Registrasi Akta Mudah Antar sampai Rumah.</p>
+                            <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '0.85rem', lineHeight: '1.5', fontWeight: 600, color: '#475569', letterSpacing: '0.2px' }}>
+                                Registrasi Akta Mudah <span style={{ background: 'linear-gradient(90deg, #0284c7, #38bdf8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 800 }}>Antar Sampai Rumah</span>.
+                            </p>
                             <span className="action-link ramah-link">Ajukan Sekarang &rarr;</span>
                         </div>
                     </Link>
@@ -140,7 +171,9 @@ export default function HomePage() {
                         </div>
                         <div className="card-body">
                             <h3>SANTUN</h3>
-                            <p>Saya Antar sampai Tujuan — Layanan Transport Nifas JKN.</p>
+                            <p style={{ fontFamily: "'Outfit', sans-serif", fontSize: '0.85rem', lineHeight: '1.5', fontWeight: 600, color: '#475569', letterSpacing: '0.2px' }}>
+                                Saya <span style={{ background: 'linear-gradient(90deg, #16a34a, #4ade80)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 800 }}>Antar Sampai Tujuan</span>.
+                            </p>
                             <span className="action-link santun-link">Ajukan Sekarang &rarr;</span>
                         </div>
                     </Link>
