@@ -47,25 +47,7 @@ function App() {
 
   return (
     <div className="app-container">
-      {/* App Bar */}
-      <header className="app-bar">
-        <div className="app-bar-content">
-          <div className="app-bar-logo">
-            <Hospital size={22} color="white" />
-          </div>
-          <div>
-            <h1>RSUD Bendan</h1>
-            <div className="subtitle">SAKPORE — Layanan Inovatif</div>
-          </div>
-        </div>
-        {!isAdminPage && (
-          <div className="app-bar-actions">
-            <Link to="/admin/login" title="Admin Login">
-              <LogIn size={18} />
-            </Link>
-          </div>
-        )}
-      </header>
+      {/* App Bar Removed as requested */}
 
       {/* Main Content Area */}
       <main className="app-content">
@@ -90,6 +72,19 @@ function App() {
           {/* Fallback */}
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+
+        {/* Global Footer */}
+        <footer style={{
+          textAlign: 'center',
+          padding: '24px 20px',
+          marginTop: '20px',
+          fontSize: '0.8rem',
+          color: 'var(--text-muted)',
+          borderTop: '1px solid rgba(0,0,0,0.05)',
+          paddingBottom: isAdminPage ? '24px' : '30px'
+        }}>
+          Aplikasi Sakpore @2026 Mukhsin Hadi. All Right Reserved
+        </footer>
       </main>
 
       {/* Bottom Navigation - Only for patient pages */}
@@ -106,6 +101,11 @@ function App() {
           <Link to="/santun/submit" className={`nav-item ${location.pathname.startsWith('/santun') ? 'active' : ''}`}>
             <Truck size={22} />
             <span>SANTUN</span>
+          </Link>
+          {/* Admin Login at Right side of Bottom Nav */}
+          <Link to="/admin/login" className={`nav-item ${location.pathname === '/admin/login' ? 'active' : ''}`}>
+            <LogIn size={22} />
+            <span>Admin</span>
           </Link>
         </nav>
       )}
