@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { Home, FileText, Truck, LogIn, Hospital } from 'lucide-react';
 import { useAuthStore } from './store/useAuthStore';
@@ -37,16 +37,26 @@ function AdminRoute({ children }) {
 function App() {
   const location = useLocation();
   const { initializeAuth } = useAuthStore();
+  const [adminViewMode, setAdminViewMode] = useState('mobile');
 
   useEffect(() => {
     initializeAuth();
   }, [initializeAuth]);
 
+  // Listen for admin view mode changes
+  useEffect(() => {
+    const handleViewMode = (e) => setAdminViewMode(e.detail);
+    window.addEventListener('admin-view-mode', handleViewMode);
+    return () => window.removeEventListener('admin-view-mode', handleViewMode);
+  }, []);
+
   // Check if we're on an admin page
   const isAdminPage = location.pathname.startsWith('/admin');
+  const isAdminDashboard = location.pathname === '/admin/dashboard';
+  const useWebMode = isAdminDashboard && adminViewMode === 'web';
 
   return (
-    <div className="app-container">
+    <div className={`app-container ${useWebMode ? 'web-mode' : ''}`}>
       {/* App Bar Removed as requested */}
 
       {/* Main Content Area */}
@@ -76,12 +86,14 @@ function App() {
         {/* Global Footer */}
         <footer style={{
           textAlign: 'center',
-          padding: '24px 20px',
+          padding: '24px 12px',
           marginTop: '20px',
-          fontSize: '0.8rem',
+          fontSize: '0.65rem',
           color: 'var(--text-muted)',
           borderTop: '1px solid rgba(0,0,0,0.05)',
-          paddingBottom: isAdminPage ? '24px' : '30px'
+          paddingBottom: isAdminPage ? '24px' : '30px',
+          whiteSpace: 'nowrap',
+          letterSpacing: '0.2px',
         }}>
           Aplikasi Sakpore @2026 Mukhsin Hadi. All Right Reserved
         </footer>

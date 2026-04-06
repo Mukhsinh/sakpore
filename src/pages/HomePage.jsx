@@ -1,8 +1,187 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Clock, Phone, Shield, Star, MessageSquare, Send } from 'lucide-react';
+import { Search, Clock, Phone, Shield, Star, MessageSquare, Send, ChevronDown, HelpCircle, FileText, Truck, CheckCircle, Zap } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 
+/* ════════════════ FAQ SECTION ════════════════ */
+function FAQSection() {
+    const [isOpen, setIsOpen] = useState(false);
+    const [activeQ, setActiveQ] = useState(null);
+
+    const faqs = [
+        {
+            icon: '📋',
+            q: 'Apa itu layanan SAKPORE?',
+            a: 'SAKPORE (Sistem Akselerasi Kualitas Pelayanan Optimal RSUD Bendan) terdiri dari dua layanan unggulan: RAMAH (Registrasi Akta Mudah Antar sampai Rumah) dan SANTUN (Saya Antar sampai Tujuan). Khusus untuk pasien yang melahirkan di RSUD Bendan Kota Pekalongan.'
+        },
+        {
+            icon: '🎁',
+            q: 'Apa manfaat yang saya peroleh?',
+            a: 'RAMAH — Pengurusan akta kelahiran bayi Anda tanpa perlu ke Disdukcapil, langsung diantar ke rumah. GRATIS!\nSANTUN — Layanan antar jemput pasien pasca melahirkan dari rumah sakit ke rumah. GRATIS!'
+        },
+        {
+            icon: '📝',
+            q: 'Bagaimana cara mengisi formulir?',
+            a: '1. Pilih layanan RAMAH atau SANTUN\n2. Isi data diri lengkap (nama, NIK, HP)\n3. Upload dokumen pendukung (KTP, KK, Surat Keterangan Lahir)\n4. Kirim permohonan & simpan kode tracking'
+        },
+        {
+            icon: '⏱️',
+            q: 'Berapa lama proses penyelesaiannya?',
+            a: 'RAMAH — SLA 7 hari kerja sejak dokumen dinyatakan lengkap & terverifikasi.\nSANTUN — Langsung diproses! Armada akan dikirim segera setelah permohonan diterima.'
+        },
+        {
+            icon: '💬',
+            q: 'Bagaimana jika saya bingung?',
+            a: 'Cukup klik tombol "Hubungi via WhatsApp" yang tersedia di halaman ini. Tim admin kami siap membantu Anda kapan saja!'
+        }
+    ];
+
+    return (
+        <div style={{ marginTop: '32px' }}>
+            {/* FAQ Toggle Button */}
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                style={{
+                    width: '100%',
+                    padding: '16px 20px',
+                    background: isOpen
+                        ? 'linear-gradient(135deg, #0284c7 0%, #0ea5e9 100%)'
+                        : 'linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%)',
+                    border: isOpen ? 'none' : '1px solid #bae6fd',
+                    borderRadius: '16px',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    gap: '12px',
+                    transition: 'all 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+                    boxShadow: isOpen
+                        ? '0 8px 25px rgba(2, 132, 199, 0.25)'
+                        : '0 2px 8px rgba(0,0,0,0.04)',
+                }}
+            >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{
+                        width: '36px', height: '36px', borderRadius: '10px',
+                        background: isOpen ? 'rgba(255,255,255,0.2)' : 'rgba(2, 132, 199, 0.1)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                        <HelpCircle size={18} color={isOpen ? 'white' : '#0284c7'} />
+                    </div>
+                    <div style={{ textAlign: 'left' }}>
+                        <h4 style={{
+                            fontSize: '0.95rem', fontWeight: 800, margin: 0,
+                            color: isOpen ? 'white' : '#0c4a6e',
+                            fontFamily: "'Outfit', sans-serif",
+                        }}>FAQ Layanan</h4>
+                        <p style={{
+                            fontSize: '0.72rem', margin: 0, marginTop: '2px',
+                            color: isOpen ? 'rgba(255,255,255,0.8)' : '#64748b',
+                        }}>Pertanyaan yang sering diajukan</p>
+                    </div>
+                </div>
+                <ChevronDown
+                    size={20}
+                    color={isOpen ? 'white' : '#0284c7'}
+                    style={{
+                        transition: 'transform 0.35s cubic-bezier(0.4, 0, 0.2, 1)',
+                        transform: isOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                    }}
+                />
+            </button>
+
+            {/* FAQ Content */}
+            <div style={{
+                maxHeight: isOpen ? '2000px' : '0',
+                overflow: 'hidden',
+                transition: 'max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease',
+                opacity: isOpen ? 1 : 0,
+            }}>
+                <div style={{
+                    marginTop: '12px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '8px',
+                }}>
+                    {faqs.map((faq, idx) => (
+                        <div
+                            key={idx}
+                            style={{
+                                background: 'white',
+                                borderRadius: '14px',
+                                border: activeQ === idx ? '1px solid #93c5fd' : '1px solid #f1f5f9',
+                                overflow: 'hidden',
+                                boxShadow: activeQ === idx
+                                    ? '0 4px 16px rgba(2, 132, 199, 0.1)'
+                                    : '0 1px 3px rgba(0,0,0,0.03)',
+                                transition: 'all 0.25s ease',
+                            }}
+                        >
+                            <button
+                                onClick={() => setActiveQ(activeQ === idx ? null : idx)}
+                                style={{
+                                    width: '100%', border: 'none', background: 'transparent',
+                                    padding: '14px 16px', cursor: 'pointer',
+                                    display: 'flex', alignItems: 'center', gap: '10px',
+                                    textAlign: 'left',
+                                }}
+                            >
+                                <span style={{ fontSize: '1.2rem', flexShrink: 0 }}>{faq.icon}</span>
+                                <span style={{
+                                    flex: 1, fontSize: '0.85rem', fontWeight: 700,
+                                    color: activeQ === idx ? '#0284c7' : '#1e293b',
+                                    fontFamily: "'Outfit', sans-serif",
+                                    transition: 'color 0.2s',
+                                }}>{faq.q}</span>
+                                <ChevronDown
+                                    size={16}
+                                    color={activeQ === idx ? '#0284c7' : '#94a3b8'}
+                                    style={{
+                                        transition: 'transform 0.25s ease',
+                                        transform: activeQ === idx ? 'rotate(180deg)' : 'rotate(0deg)',
+                                        flexShrink: 0,
+                                    }}
+                                />
+                            </button>
+                            <div style={{
+                                maxHeight: activeQ === idx ? '300px' : '0',
+                                overflow: 'hidden',
+                                transition: 'max-height 0.3s ease',
+                            }}>
+                                <div style={{
+                                    padding: '0 16px 14px 46px',
+                                    fontSize: '0.8rem',
+                                    color: '#475569',
+                                    lineHeight: '1.6',
+                                    whiteSpace: 'pre-line',
+                                }}>
+                                    {faq.a}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+
+                    {/* Quick CTA */}
+                    <div style={{
+                        textAlign: 'center', padding: '12px 0 4px',
+                        fontSize: '0.78rem', color: '#64748b',
+                    }}>
+                        Masih ada pertanyaan?{' '}
+                        <span
+                            onClick={() => window.open('https://wa.me/6282324408910', '_blank')}
+                            style={{
+                                color: '#128C7E', fontWeight: 700, cursor: 'pointer',
+                                textDecoration: 'underline',
+                            }}
+                        >Hubungi via WhatsApp</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
+
+/* ════════════════ TESTIMONIAL SECTION ════════════════ */
 function TestimonialSection() {
     const [testimonials, setTestimonials] = useState([]);
     const [name, setName] = useState('');
@@ -136,6 +315,7 @@ function TestimonialSection() {
     );
 }
 
+/* ════════════════ HOME PAGE ════════════════ */
 export default function HomePage() {
     return (
         <div className="animate-slide-up">
@@ -146,7 +326,18 @@ export default function HomePage() {
                     <div className="hero-pattern-2"></div>
                     <div style={{ position: 'relative', zIndex: 2 }}>
                         <h2>Selamat Datang!</h2>
-                        <p>Layanan inovatif RSUD Bendan Kota Pekalongan untuk masyarakat.</p>
+                        <p style={{
+                            fontFamily: "'Outfit', sans-serif",
+                            fontSize: '0.88rem',
+                            lineHeight: 1.6,
+                            color: 'rgba(255,255,255,0.95)',
+                            margin: 0,
+                            fontWeight: 500,
+                            letterSpacing: '0.2px',
+                        }}>
+                            Layanan <span style={{ fontWeight: 800, letterSpacing: '1px', textTransform: 'uppercase', fontSize: '0.82rem', background: 'rgba(255,255,255,0.2)', padding: '2px 8px', borderRadius: '6px' }}>Sakpore</span> khusus pasien yang melahirkan di{' '}
+                            <span style={{ fontWeight: 800 }}>RSUD Bendan Kota Pekalongan</span>
+                        </p>
                     </div>
                 </div>
 
@@ -215,21 +406,41 @@ export default function HomePage() {
                                 Layanan tersedia 24 jam. Dokumen diproses pada jam kerja.
                             </p>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '16px', background: 'rgba(255, 255, 255, 0.5)', padding: '12px 16px', borderRadius: '16px', border: '1px solid rgba(0,0,0,0.05)', cursor: 'pointer' }} onClick={() => window.open('https://wa.me/6285726112001', '_blank')}>
-                            <div style={{ width: '48px', height: '48px', flexShrink: 0 }}>
+                        <div
+                            style={{
+                                display: 'flex', alignItems: 'center', gap: '12px',
+                                background: 'rgba(255, 255, 255, 0.5)',
+                                padding: '12px 16px', borderRadius: '16px',
+                                border: '1px solid rgba(0,0,0,0.05)', cursor: 'pointer',
+                                position: 'relative',
+                            }}
+                            onClick={() => window.open('https://wa.me/6282324408910', '_blank')}
+                        >
+                            <div style={{ width: '44px', height: '44px', flexShrink: 0 }}>
                                 <img src="/whatsapp-3d-transparent.png" alt="WhatsApp" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                             </div>
-                            <div>
+                            <div style={{ flex: 1 }}>
                                 <h4 style={{ fontSize: '0.9rem', fontWeight: '800', margin: 0, color: '#128C7E' }}>Hubungi via WhatsApp</h4>
-                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: 0 }}>
-                                    <strong>+62 857-2611-2001</strong>
-                                </p>
+                                <p style={{ fontSize: '0.75rem', color: '#94a3b8', margin: 0, marginTop: '2px' }}>Klik untuk chat langsung</p>
                             </div>
+                            <img
+                                src="/admin-3d-transparent.png"
+                                alt="Admin"
+                                className="icon-image-3d-clean"
+                                style={{
+                                    width: '56px', height: '56px',
+                                    position: 'absolute', right: '8px', top: '-12px',
+                                    filter: 'drop-shadow(0 6px 12px rgba(0,0,0,0.15))',
+                                }}
+                            />
                         </div>
                     </div>
                 </div>
 
-                {/* Testimonials Section inserted here */}
+                {/* FAQ Section */}
+                <FAQSection />
+
+                {/* Testimonials Section */}
                 <TestimonialSection />
 
             </div>

@@ -4,7 +4,8 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { useNavigate } from 'react-router-dom';
 import {
     LogOut, FileText, Truck, CheckCircle, PackageCheck, Navigation,
-    Eye, ClipboardList, Download, Square, Archive, Search, Bell, X, MessageCircle
+    Eye, ClipboardList, Download, Square, Archive, Search, Bell, X, MessageCircle,
+    Monitor, Smartphone
 } from 'lucide-react';
 import { Line } from 'react-chartjs-2';
 import {
@@ -347,6 +348,19 @@ export default function AdminPanel() {
     const [santunReqs, setSantunReqs] = useState([]);
     const [loading, setLoading] = useState(true);
     const [notifications, setNotifications] = useState([]);
+    const [viewMode, setViewMode] = useState(() => {
+        return localStorage.getItem('admin_view_mode') || 'mobile';
+    });
+
+    // Dispatch event to App.jsx to toggle container width
+    useEffect(() => {
+        window.dispatchEvent(new CustomEvent('admin-view-mode', { detail: viewMode }));
+        localStorage.setItem('admin_view_mode', viewMode);
+        return () => {
+            // Reset to mobile when leaving admin dashboard
+            window.dispatchEvent(new CustomEvent('admin-view-mode', { detail: 'mobile' }));
+        };
+    }, [viewMode]);
 
     // Filters per tab
     const [rYear, setRYear] = useState(2026); const [rPeriod, setRPeriod] = useState('tahun'); const [rSub, setRSub] = useState(null);
@@ -644,8 +658,8 @@ export default function AdminPanel() {
         </div>
     );
 
-    const ramahCols = ['Nama', 'NIK', 'Ibu', 'Ayah', 'HP', 'Alamat', 'Status', 'Tracking', 'Tanggal'];
-    const ramahKeys = ['applicant_name', 'applicant_nik', 'mother_name', 'father_name', 'phone_number', 'address', 'status', 'tracking_code', 'created_at'];
+    const ramahCols = ['Nama', 'NIK', 'Nama Bayi', 'Ibu Kandung Bayi', 'Ayah Kandung Bayi', 'HP', 'Alamat', 'Status', 'Tracking', 'Tanggal'];
+    const ramahKeys = ['applicant_name', 'applicant_nik', 'baby_name', 'mother_name', 'father_name', 'phone_number', 'address', 'status', 'tracking_code', 'created_at'];
     const santunCols = ['Nama', 'NIK', 'HP', 'Jemput', 'Tujuan', 'Consent', 'Status', 'Tracking', 'Tanggal'];
     const santunKeys = ['patient_name', 'patient_nik', 'phone_number', 'pickup_address', 'dropoff_address', 'consent_signed', 'status', 'tracking_code', 'created_at'];
 
@@ -669,9 +683,34 @@ export default function AdminPanel() {
                 <div className="sakpore-floating">SAKPORE</div>
                 <div style={{ position: 'relative', zIndex: 2 }}>
                     <h2 style={{ fontFamily: "'Outfit',sans-serif", fontSize: '1.6rem', fontWeight: 800, margin: 0, letterSpacing: '-0.5px', lineHeight: 1.2, color: 'white' }}>Dashboard Admin</h2>
-                    <button onClick={handleSignOut} style={{ marginTop: '10px', background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px', padding: '6px 14px', color: 'rgba(255,255,255,0.9)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontFamily: "'Outfit',sans-serif", fontWeight: 600, backdropFilter: 'blur(4px)' }}>
-                        <LogOut size={14} /> Keluar
-                    </button>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '10px', flexWrap: 'wrap' }}>
+                        {/* View Mode Toggle */}
+                        <div style={{ display: 'inline-flex', borderRadius: '10px', overflow: 'hidden', border: '1px solid rgba(255,255,255,0.25)' }}>
+                            <button onClick={() => setViewMode('mobile')} style={{
+                                background: viewMode === 'mobile' ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.08)',
+                                border: 'none', color: 'white', cursor: 'pointer',
+                                display: 'inline-flex', alignItems: 'center', gap: '5px',
+                                padding: '6px 12px', fontSize: '0.75rem', fontFamily: "'Outfit',sans-serif",
+                                fontWeight: viewMode === 'mobile' ? 700 : 500,
+                                backdropFilter: 'blur(4px)', transition: 'all 0.2s'
+                            }}>
+                                <Smartphone size={13} /> Mobile
+                            </button>
+                            <button onClick={() => setViewMode('web')} style={{
+                                background: viewMode === 'web' ? 'rgba(255,255,255,0.3)' : 'rgba(255,255,255,0.08)',
+                                border: 'none', color: 'white', cursor: 'pointer',
+                                display: 'inline-flex', alignItems: 'center', gap: '5px',
+                                padding: '6px 12px', fontSize: '0.75rem', fontFamily: "'Outfit',sans-serif",
+                                fontWeight: viewMode === 'web' ? 700 : 500,
+                                backdropFilter: 'blur(4px)', transition: 'all 0.2s'
+                            }}>
+                                <Monitor size={13} /> Web
+                            </button>
+                        </div>
+                        <button onClick={handleSignOut} style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '10px', padding: '6px 14px', color: 'rgba(255,255,255,0.9)', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', fontFamily: "'Outfit',sans-serif", fontWeight: 600, backdropFilter: 'blur(4px)' }}>
+                            <LogOut size={14} /> Keluar
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -716,7 +755,7 @@ export default function AdminPanel() {
                             ramahActive.map(doc => (
                                 <div key={doc.id} className="admin-card">
                                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '8px' }}>
-                                        <div><p style={{ fontWeight: 700, fontSize: '0.95rem', fontFamily: "'Outfit'" }}>{doc.applicant_name}</p><p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>NIK: {doc.applicant_nik}</p></div>
+                                        <div><p style={{ fontWeight: 700, fontSize: '0.95rem', fontFamily: "'Outfit'" }}>{doc.applicant_name}</p><p style={{ fontSize: '0.78rem', color: '#94a3b8' }}>NIK: {doc.applicant_nik}</p>{doc.baby_name && <p style={{ fontSize: '0.78rem', color: '#0284c7', fontWeight: 600 }}>👶 Bayi: {doc.baby_name}</p>}</div>
                                         <StatusBadge status={doc.status} />
                                     </div>
                                     <div style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '10px' }}>
@@ -728,6 +767,8 @@ export default function AdminPanel() {
                                                 </button>
                                             )}
                                         </p>
+                                        {doc.mother_name && <p>👩 Ibu: {doc.mother_name}</p>}
+                                        {doc.father_name && <p>👨 Ayah: {doc.father_name}</p>}
                                         <p>📍 {doc.address}</p>
                                         <p style={{ fontSize: '0.75rem', color: '#94a3b8', marginTop: '4px' }}>Tracking: <strong style={{ color: '#0284c7' }}>{doc.tracking_code}</strong>{' · '}{new Date(doc.created_at).toLocaleDateString('id-ID')}</p>
                                     </div>
@@ -901,7 +942,12 @@ export default function AdminPanel() {
                                 <p style={{ fontSize: '0.8rem', color: '#64748b' }}>NIK: {selectedArchive.type === 'ramah' ? selectedArchive.data.applicant_nik : selectedArchive.data.patient_nik}</p>
                                 <p style={{ fontSize: '0.8rem', color: '#64748b' }}>No HP: {selectedArchive.data.phone_number || '-'}</p>
                                 {selectedArchive.type === 'ramah' ? (
-                                    <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>📍 Alamat: {selectedArchive.data.address}</p>
+                                    <>
+                                        {selectedArchive.data.baby_name && <p style={{ fontSize: '0.8rem', color: '#0284c7', fontWeight: 600 }}>👶 Nama Bayi: {selectedArchive.data.baby_name}</p>}
+                                        {selectedArchive.data.mother_name && <p style={{ fontSize: '0.8rem', color: '#64748b' }}>👩 Ibu Kandung Bayi: {selectedArchive.data.mother_name}</p>}
+                                        {selectedArchive.data.father_name && <p style={{ fontSize: '0.8rem', color: '#64748b' }}>👨 Ayah Kandung Bayi: {selectedArchive.data.father_name}</p>}
+                                        <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>📍 Alamat: {selectedArchive.data.address}</p>
+                                    </>
                                 ) : (
                                     <>
                                         <p style={{ fontSize: '0.8rem', color: '#64748b', marginTop: '4px' }}>📍 Jemput: {selectedArchive.data.pickup_address}</p>

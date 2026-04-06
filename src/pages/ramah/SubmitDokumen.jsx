@@ -14,6 +14,7 @@ export default function SubmitDokumen() {
     const [formData, setFormData] = useState({
         applicant_name: '',
         applicant_nik: '',
+        baby_name: '',
         mother_name: '',
         father_name: '',
         phone_number: '',
@@ -244,12 +245,17 @@ export default function SubmitDokumen() {
 
                     <div className="input-group" style={{ position: 'relative', marginBottom: '12px' }}>
                         <User size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }} />
-                        <input required type="text" name="mother_name" value={formData.mother_name} onChange={handleChange} className="input ramah-input-box" placeholder="Nama Ibu Kandung" style={{ border: '1px solid #22c55e' }} />
+                        <input required type="text" name="baby_name" value={formData.baby_name} onChange={handleChange} className="input ramah-input-box" placeholder="Nama Bayi" style={{ border: '1px solid #22c55e' }} />
                     </div>
 
                     <div className="input-group" style={{ position: 'relative', marginBottom: '12px' }}>
                         <User size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }} />
-                        <input required type="text" name="father_name" value={formData.father_name} onChange={handleChange} className="input ramah-input-box" placeholder="Nama Ayah Kandung" style={{ border: '1px solid #22c55e' }} />
+                        <input required type="text" name="mother_name" value={formData.mother_name} onChange={handleChange} className="input ramah-input-box" placeholder="Nama Ibu Kandung Bayi" style={{ border: '1px solid #22c55e' }} />
+                    </div>
+
+                    <div className="input-group" style={{ position: 'relative', marginBottom: '12px' }}>
+                        <User size={18} style={{ position: 'absolute', left: '16px', top: '50%', transform: 'translateY(-50%)', color: '#6b7280' }} />
+                        <input required type="text" name="father_name" value={formData.father_name} onChange={handleChange} className="input ramah-input-box" placeholder="Nama Ayah Kandung Bayi" style={{ border: '1px solid #22c55e' }} />
                     </div>
 
                     <div className="input-group" style={{ position: 'relative', marginBottom: '12px' }}>
