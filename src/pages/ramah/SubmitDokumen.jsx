@@ -275,7 +275,7 @@ export default function SubmitDokumen() {
                         Upload Dokumen Pendukung
                     </h4>
                     <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: '4px' }}>
-                        Foto KTP, KK, Surat Keterangan Lahir)
+                        Foto KTP, KK, Buku Nikah, Surat Keterangan Lahir
                     </p>
                     <p style={{ fontSize: '0.78rem', color: '#ef4444', marginBottom: '16px', fontWeight: 500 }}>
                         *khusus untuk KK (kartu Keluarga ASLI wajib diserahkan ke admin)
